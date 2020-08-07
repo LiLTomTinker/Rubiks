@@ -1,5 +1,6 @@
-from itertools import permutations
+from matplotlib import pyplot as plt
 import numpy as np
+from itertools import combinations
 
 
 class Cube():
@@ -19,11 +20,69 @@ class Cube():
         self.middle_y = {'edges':[1,3,9,11],'centers':[1,2,4,6]}
         self.middle_z = {'edges':[2,4,10,12],'centers':[1,3,5,6]}
 
+        self.net = np.array([[0.,0,0,1,1,1,0,0,0,0,0,0],
+                 [0.,0,0,1,1,1,0,0,0,0,0,0],
+                 [0.,0,0,1,1,1,0,0,0,0,0,0],
+                 [1.,1,1,1,1,1,1,1,1,1,1,1],
+                 [1.,1,1,1,1,1,1,1,1,1,1,1],
+                 [1.,1,1,1,1,1,1,1,1,1,1,1],
+                 [0.,0,0,1,1,1,0,0,0,0,0,0],
+                 [0.,0,0,1,1,1,0,0,0,0,0,0],
+                 [0.,0,0,1,1,1,0,0,0,0,0,0]])
+        self.net = np.repeat(self.net[:,:,np.newaxis],3,axis=2)
+
+        self.white = (1,1,1)
+        self.yellow = (1,1,51/255)
+        self.green = (0,150/255,20/255)
+        self.blue = (0,102/255,204/255)
+        self.red = (1,0,30/255)
+        self.orange = (1,118/255,0)
+
+        self.net[:3,3:6,:] = self.white
+        self.net[6:9,3:6,:] = self.yellow
+        self.net[3:6,:3,:] = self.orange
+        self.net[3:6,3:6,:] = self.green
+        self.net[3:6,6:9,:] = self.red
+        self.net[3:6,9:12,:] = self.blue
+
+        self.edge_coords = {
+            1 : [(2,4),(3,4)],
+            2 : [(1,5),(3,7)],
+            3 : [(0,4),(3,10)],
+            4 : [(1,3),(3,1)],
+            5 : [(4,3),(4,2)],
+            6 : [(4,5),(4,6)],
+            7 : [(4,9),(4,8)],
+            8 : [(4,11),(4,0)],
+            9 : [(6,4),(5,4)],
+            10 : [(7,5),(5,7)],
+            11 : [(8,4),(5,10)],
+            12 : [(7,3),(5,1)]
+        }
+
+        self.corner_coords = {
+            1 : [(2,3),(3,3),(3,2)],
+            2 : [(2,5),(3,6),(3,5)],
+            3 : [(0,5),(3,9),(3,8)],
+            4 : [(0,3),(3,0),(3,11)],
+            5 : [(6,3),(5,2),(5,3)],
+            6 : [(6,5),(5,5),(5,6)],
+            7 : [(8,5),(5,8),(5,9)],
+            8 : [(8,3),(5,11),(5,0)],
+        }
+        self.render()
+
+
     def solve(self):
-        pass
+        self.__init__()
 
     def scramble(self):
-        pass
+        choices = ['F','B','R','L','U','D','F2','B2','R2','L2','U2','D2',"F'","B'","R'","L'","U'","D'",]
+        command = ''
+        for i in range(21):
+            command += choices[np.random.randint(0,18)]
+            command += ' '
+        self.move(command)
 
     def is_solved(self):
         oriented = 0
@@ -68,7 +127,27 @@ class Cube():
     def move(self, command):
         command = command.split()
         for letter in command:
-            self.move_(letter)
+            if letter.upper() == "U2" or letter.upper() == "U'2":
+                self.move_("U")
+                self.move_("U")
+            elif letter.upper() == "D2" or letter.upper() == "D'2":
+                self.move_("D")
+                self.move_("D")
+            if letter.upper() == "F2" or letter.upper() == "F'2":
+                self.move_("F")
+                self.move_("F")
+            if letter.upper() == "B2" or letter.upper() == "B'2":
+                self.move_("B")
+                self.move_("B")
+            if letter.upper() == "R2" or letter.upper() == "R'2":
+                self.move_("R")
+                self.move_("R")
+            if letter.upper() == "L2" or letter.upper() == "L'2":
+                self.move_("L")
+                self.move_("L")
+            else:
+                self.move_(letter)
+        self.render()
 
     def move_(self,command):
         # a single letter (or letter prime) move
@@ -358,6 +437,101 @@ class Cube():
               "LEFT: (" + self.centers[self.left['center']].color + ")",self.left,'\n',
               "RIGHT: (" + self.centers[self.right['center']].color + ")",self.right)
 
+    def key2color(self,key):
+        if key == 'w':
+            return self.white
+        elif key == 'y':
+            return self.yellow
+        elif key == 'g':
+            return self.green
+        elif key == 'b':
+            return self.blue
+        elif key == 'r':
+            return self.red
+        elif key == 'o':
+            return self.orange
+        else:
+            raise ValueError("Invalid key")
+
+    def render(self):
+        for i in range(1,9):
+            orientation = self.corners[i].orientation
+            xy1,xy2,xy3 = self.corner_coords[self.corners[i].position]
+            color1, color2, color3 = self.corners[i].colors
+            if orientation == 2: # needs to rotate ccw
+                color1 = self.key2color(color1)
+                color2 = self.key2color(color2)
+                color3 = self.key2color(color3)
+                x1,y1 = xy1
+                x2,y2 = xy2
+                x3,y3 = xy3
+                self.net[x1,y1,:] = color3
+                self.net[x2,y2,:] = color1
+                self.net[x3,y3,:] = color2
+            elif orientation == 1: # needs to rotate cw
+                color1 = self.key2color(color1)
+                color2 = self.key2color(color2)
+                color3 = self.key2color(color3)
+                x1,y1 = xy1
+                x2,y2 = xy2
+                x3,y3 = xy3
+                self.net[x1,y1,:] = color2
+                self.net[x2,y2,:] = color3
+                self.net[x3,y3,:] = color1
+            else: # orientation == 0: # oriented properly
+                color1 = self.key2color(color1)
+                color2 = self.key2color(color2)
+                color3 = self.key2color(color3)
+                x1,y1 = xy1
+                x2,y2 = xy2
+                x3,y3 = xy3
+                self.net[x1,y1,:] = color1
+                self.net[x2,y2,:] = color2
+                self.net[x3,y3,:] = color3
+
+        for i in range(1,13): # an oriented middle edge is g/b touching w/y/g/b
+        # a disoriented medge is o/r touching w/y
+        # an oriented tedge w/y touching b/g
+        # a disoriented tedge is w/y not touching w/y   or   w/y touching o/r
+            disoriented = self.edges[i].orientation
+            xy1,xy2 = self.edge_coords[self.edges[i].position]
+            color1, color2 = self.edges[i].colors
+            if color1 == 'y' or color1 == 'w':
+                if not disoriented:
+                    color1 = self.key2color(color1)
+                    color2 = self.key2color(color2)
+                    x1,y1 = xy1
+                    x2,y2 = xy2
+                    self.net[x1,y1,:] = color1
+                    self.net[x2,y2,:] = color2
+                else: # w/y needs to be on g or b
+                    color1 = self.key2color(color1)
+                    color2 = self.key2color(color2)
+                    x1,y1 = xy1
+                    x2,y2 = xy2
+                    self.net[x1,y1,:] = color2  # ordering switched
+                    self.net[x2,y2,:] = color1
+            else: # it's a middle edge with color1 = 'g' or 'b'
+                if not disoriented:
+                    color1 = self.key2color(color1)
+                    color2 = self.key2color(color2)
+                    x1,y1 = xy1
+                    x2,y2 = xy2
+                    self.net[x1,y1,:] = color1
+                    self.net[x2,y2,:] = color2
+                else:
+                    color1 = self.key2color(color1)
+                    color2 = self.key2color(color2)
+                    x1,y1 = xy1
+                    x2,y2 = xy2
+                    self.net[x1,y1,:] = color2 # ordering switched
+                    self.net[x2,y2,:] = color1
+
+
+        plt.xticks([])
+        plt.yticks([])
+        plt.imshow(self.net)
+        plt.show()
 
 
 
@@ -365,14 +539,14 @@ class Cubie():
     def __init__(self):
         self.type = None
         self.corner_colors = {
-            1 : ['w','o','g'],
-            2 : ['w','g','r'],
-            3 : ['w','r','b'],
-            4 : ['w','b','o'],
-            5 : ['y','g','o'],
-            6 : ['y','r','g'],
-            7 : ['y','b','r'],
-            8 : ['y','o','b']
+            1 : ['w','g','o'],
+            2 : ['w','r','g'],
+            3 : ['w','b','r'],
+            4 : ['w','o','b'],
+            5 : ['y','o','g'],
+            6 : ['y','g','r'],
+            7 : ['y','r','b'],
+            8 : ['y','b','o']
         }
         self.edge_colors = {
             1 : ['w','g'],
@@ -380,15 +554,15 @@ class Cubie():
             3 : ['w','b'],
             4 : ['w','o'],
 
-            5 : ['o','g'],
+            5 : ['g','o'],
             6 : ['g','r'],
-            7 : ['r','b'],
+            7 : ['b','r'],
             8 : ['b','o'],
 
-            9 : ['g','y'],
-            10 : ['r','y'],
-            11 : ['b','y'],
-            12 : ['o','y']
+            9 : ['y','g'],
+            10 : ['y','r'],
+            11 : ['y','b'],
+            12 : ['y','o']
         }
         self.center_colors = {
             1 : 'w',
