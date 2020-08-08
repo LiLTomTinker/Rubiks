@@ -5,20 +5,27 @@ from itertools import combinations
 
 class Cube():
     def __init__(self):
+        plt.ion() # interactive plotting
         self.corners = {i : Corner(i) for i in range(1,9)}
         self.edges = {i : Edge(i) for i in range(1,13)}
         self.centers = {i : Center(i) for i in range(1,7)}
 
+        self.aligned_x = 1
+        self.aligned_y = 1
+        self.aligned_z = 1
+        
         # the edges are a list of the indices of the edges currently in the slots ORDER MATTERS
         self.top = {'edges':[1,2,3,4], 'corners':[1,2,3,4], 'center':1}
-        self.down = {'edges':[9,10,11,12],'corners':[5,6,7,8], 'center':6}
-        self.front = {'edges':[1,5,6,9],'corners':[1,2,5,6], 'center':2}
-        self.back = {'edges':[3,7,8,11],'corners':[3,4,7,8], 'center':4}
-        self.left = {'edges':[4,5,8,12],'corners':[1,4,5,8], 'center':5}
-        self.right = {'edges':[2,6,7,10],'corners':[2,3,6,7], 'center':3}
-        self.middle_x = {'edges':[5,6,7,8],'centers':[2,3,4,5]}
-        self.middle_y = {'edges':[1,3,9,11],'centers':[1,2,4,6]}
-        self.middle_z = {'edges':[2,4,10,12],'centers':[1,3,5,6]}
+        self.middle = {'edges': [5,6,7,8], 'centers': [2,3,4,5]}
+        self.bottom = {'edges':[9,10,11,12],'corners':[5,6,7,8], 'center':6}
+
+        # Working on refactoring and removing this unnecessary code
+        # self.front = {'edges':[1,5,6,9],'corners':[1,2,5,6], 'center':2}
+        # self.back = {'edges':[3,7,8,11],'corners':[3,4,7,8], 'center':4}
+        # self.left = {'edges':[4,5,8,12],'corners':[1,4,5,8], 'center':5}
+        # self.right = {'edges':[2,6,7,10],'corners':[2,3,6,7], 'center':3}
+        # self.middle_y = {'edges':[1,3,9,11],'centers':[1,2,4,6]}
+        # self.middle_z = {'edges':[2,4,10,12],'centers':[1,3,5,6]}
 
         self.net = np.array([[0.,0,0,1,1,1,0,0,0,0,0,0],
                  [0.,0,0,1,1,1,0,0,0,0,0,0],
@@ -32,7 +39,7 @@ class Cube():
         self.net = np.repeat(self.net[:,:,np.newaxis],3,axis=2)
 
         self.white = (1,1,1)
-        self.yellow = (1,1,51/255)
+        self.yellow = (1,1,31/255)
         self.green = (0,150/255,20/255)
         self.blue = (0,102/255,204/255)
         self.red = (1,0,30/255)
@@ -70,19 +77,60 @@ class Cube():
             7 : [(8,5),(5,8),(5,9)],
             8 : [(8,3),(5,11),(5,0)],
         }
+
+        self.center_coords = {
+            1 : (1,4),
+            2 : (4,4),
+            3 : (4,7),
+            4 : (4,10),
+            5 : (4,1),
+            6 : (7,4)
+        }
+
         self.render()
 
+        self.undo_cache = []
+        self.undo_counter = -1
 
+    def primed(self,command):
+        primed_command = ''
+        for letter in command.split()[::-1]:
+            if "'" in letter:
+                letter = letter[:-1]
+            else:
+                letter += "'"
+            primed_command += letter
+            primed_command += " "
+
+        return primed_command
+
+    def undo(self):
+        if len(self.undo_cache) == 0 or -self.undo_counter > len(self.undo_cache):
+            print("Nothing to undo")
+        else:
+            undo_command = self.undo_cache[self.undo_counter]
+            self.undo_counter -= 1
+            cube.move(self.primed(undo_command), cache=False)
+            print("Undo",undo_command)
+    def redo(self):
+        if self.undo_counter == -1:
+            print("Nothing to redo")
+        else:
+            command = self.undo_cache[self.undo_counter + 1]
+            cube.move(command, cache=False)
+            self.undo_counter += 1
+            print("Redo",command)
     def solve(self):
         self.__init__()
 
     def scramble(self):
-        choices = ['F','B','R','L','U','D','F2','B2','R2','L2','U2','D2',"F'","B'","R'","L'","U'","D'",]
+        choices = ['F','B','R','L','U','D','F2','B2','R2','L2','U2','D2',"F'","B'","R'","L'","U'","D'","M","E","S","M2","E2","S2"]
         command = ''
-        for i in range(21):
-            command += choices[np.random.randint(0,18)]
+        for i in range(28):
+            command += choices[np.random.randint(0,21)]
             command += ' '
         self.move(command)
+        print(command)
 
     def is_solved(self):
         oriented = 0
@@ -103,14 +151,18 @@ class Cube():
             self.edges[e].position = i+1
         for i,c in enumerate(self.top['corners']):
             self.corners[c].position = i+1
-        self.edges[self.front['edges'][1]].position = 5
-        self.edges[self.front['edges'][2]].position = 6
-        self.edges[self.back['edges'][1]].position = 7
-        self.edges[self.back['edges'][2]].position = 8
-        for i,e in enumerate(self.down['edges']):
+        self.centers[self.top['center']].position = 1
+
+        for i,e in enumerate(self.middle['edges']):
+            self.edges[e].position = i+5
+        for i,c in enumerate(self.middle['centers']):
+            self.centers[c].position = i+2
+
+        for i,e in enumerate(self.bottom['edges']):
             self.edges[e].position = i+9
-        for i,c in enumerate(self.down['corners']):
+        for i,c in enumerate(self.bottom['corners']):
             self.corners[c].position = i+5
+        self.centers[self.bottom['center']].position = 6
 
     def permute(self,x,permutation):
         # permute(x,[1,2,3,0])
@@ -124,27 +176,230 @@ class Cube():
             x[i] = y[permutation[i]]
         return x
 
-    def move(self, command):
+    def move(self, command, cache=True):
+        if cache:
+            if self.undo_counter != -1:
+                self.undo_cache = self.undo_cache[:self.undo_counter+1]
+                self.undo_counter = -1
+            self.undo_cache.append(command)
         command = command.split()
         for letter in command:
-            if letter.upper() == "U2" or letter.upper() == "U'2":
+            if letter.upper() in ["U2","U2'"]:
                 self.move_("U")
                 self.move_("U")
-            elif letter.upper() == "D2" or letter.upper() == "D'2":
+            elif letter.upper() in ["D2","D2'"]:
                 self.move_("D")
                 self.move_("D")
-            if letter.upper() == "F2" or letter.upper() == "F'2":
+            elif letter.upper() in ["F2","F2'"]:
                 self.move_("F")
                 self.move_("F")
-            if letter.upper() == "B2" or letter.upper() == "B'2":
+            elif letter.upper() in ["B2","B2'"]:
                 self.move_("B")
                 self.move_("B")
-            if letter.upper() == "R2" or letter.upper() == "R'2":
+            elif letter.upper() in ["R2","R2'"]:
                 self.move_("R")
                 self.move_("R")
-            if letter.upper() == "L2" or letter.upper() == "L'2":
+            elif letter.upper() in ["L2","L2'"]:
                 self.move_("L")
                 self.move_("L")
+            elif letter.upper() == "R'":
+                self.move_("R")
+                self.move_("R")
+                self.move_("R")
+            elif letter.upper() == "L'":
+                self.move_("L")
+                self.move_("L")
+                self.move_("L")
+            elif letter.upper() == "F'":
+                self.move_("F")
+                self.move_("F")
+                self.move_("F")
+            elif letter.upper() == "B'":
+                self.move_("B")
+                self.move_("B")
+                self.move_("B")
+            elif letter.upper() == "U'":
+                self.move_("U")
+                self.move_("U")
+                self.move_("U")
+            elif letter.upper() == "D'":
+                self.move_("D")
+                self.move_("D")
+                self.move_("D")
+            elif letter.upper() == "X":
+                self.move_("L")
+                self.move_("L")
+                self.move_("L")
+                self.move_("R")
+                self.move_("M")
+                self.move_("M")
+                self.move_("M")
+            elif letter.upper() == "X'":
+                self.move_("L")
+                self.move_("R")
+                self.move_("R")
+                self.move_("R")
+                self.move_("M")
+            elif letter.upper() in ["X2","X2'"]:
+                self.move_("L")
+                self.move_("R")
+                self.move_("M")
+                self.move_("L")
+                self.move_("R")
+                self.move_("M")
+            elif letter.upper() == "M'":
+                self.move_("M")
+                self.move_("M")
+                self.move_("M")
+            elif letter.upper() in ["M2","M2'"]:
+                self.move_("M")
+                self.move_("M")
+            elif letter.upper() in ["E2","E2'"]:
+                self.move_("E")
+                self.move_("E")
+            elif letter.upper() == "E'":
+                self.move_("E")
+                self.move_("E")
+                self.move_("E")
+            elif letter.upper() == "Y":
+                self.move_("E")
+                self.move_("E")
+                self.move_("E")
+                self.move_("U")
+                self.move_("D")
+                self.move_("D")
+                self.move_("D")
+            elif letter.upper() == "Y'":
+                self.move_("E")
+                self.move_("U")
+                self.move_("U")
+                self.move_("U")
+                self.move_("D")
+            elif letter.upper() in ["Y2","Y2'"]:
+                self.move_("E")
+                self.move_("U")
+                self.move_("D")
+                self.move_("E")
+                self.move_("U")
+                self.move_("D")
+            elif letter.upper() == "S'":
+                self.move_("S")
+                self.move_("S")
+                self.move_("S")
+            elif letter.upper() in ["S2","S2'"]:
+                self.move_("S")
+                self.move_("S")
+            elif letter.upper() == "Z":
+                self.move_("S")
+                self.move_("F")
+                self.move_("B")
+                self.move_("B")
+                self.move_("B")
+            elif letter.upper() == "Z'":
+                self.move_("S")
+                self.move_("S")
+                self.move_("S")
+                self.move_("F")
+                self.move_("F")
+                self.move_("F")
+                self.move_("B")
+            elif letter.upper() in ["Z2","Z2'"]:
+                self.move_("S")
+                self.move_("F")
+                self.move_("B")
+                self.move_("S")
+                self.move_("F")
+                self.move_("B")
+            elif letter.upper() == "FW":
+                self.move_("F")
+                self.move_("S")
+            elif letter.upper() == "FW'":
+                self.move_("F")
+                self.move_("F")
+                self.move_("F")
+                self.move_("S")
+                self.move_("S")
+                self.move_("S")
+            elif letter.upper() in ["FW2","FW2'"]:
+                self.move_("F")
+                self.move_("S")
+                self.move_("F")
+                self.move_("S")
+            elif letter.upper() == "BW":
+                self.move_("B")
+                self.move_("S")
+                self.move_("S")
+                self.move_("S")
+            elif letter.upper() == "BW'":
+                self.move_("B")
+                self.move_("B")
+                self.move_("B")
+                self.move_("S")
+            elif letter.upper() in ["BW2","BW2'"]:
+                self.move_("B")
+                self.move_("S")
+                self.move_("B")
+                self.move_("S")
+            elif letter.upper() == "RW":
+                self.move_("R")
+                self.move_("M")
+                self.move_("M")
+                self.move_("M")
+            elif letter.upper() == "RW'":
+                self.move_("R")
+                self.move_("R")
+                self.move_("R")
+                self.move_("M")
+            elif letter.upper() in ["RW2","RW2'"]:
+                self.move_("R")
+                self.move_("M")
+                self.move_("R")
+                self.move_("M")
+            elif letter.upper() == "LW":
+                self.move_("L")
+                self.move_("M")
+            elif letter.upper() == "LW'":
+                self.move_("L")
+                self.move_("L")
+                self.move_("L")
+                self.move_("M")
+                self.move_("M")
+                self.move_("M")
+            elif letter.upper() in ["LW2","LW2'"]:
+                self.move_("L")
+                self.move_("M")
+                self.move_("L")
+                self.move_("M")
+            elif letter.upper() == "UW":
+                self.move_("U")
+                self.move_("E")
+                self.move_("E")
+                self.move_("E")
+            elif letter.upper() == "UW'":
+                self.move_("U")
+                self.move_("U")
+                self.move_("U")
+                self.move_("E")
+            elif letter.upper() in ["UW2","UW2'"]:
+                self.move_("U")
+                self.move_("E")
+                self.move_("U")
+                self.move_("E")
+            elif letter.upper() == "DW":
+                self.move_("D")
+                self.move_("E")
+            elif letter.upper() == "DW'":
+                self.move_("D")
+                self.move_("D")
+                self.move_("D")
+                self.move_("E")
+                self.move_("E")
+                self.move_("E")
+            elif letter.upper() in ["DW2","DW2'"]:
+                self.move_("D")
+                self.move_("E")
+                self.move_("D")
+                self.move_("E")
             else:
                 self.move_(letter)
         self.render()
@@ -156,286 +411,184 @@ class Cube():
         if command == "U":
             self.permute(self.top['edges'],[1,2,3,0])
             self.permute(self.top['corners'],[1,2,3,0])
-            self.front['edges'][0] = self.top['edges'][0]
-            self.right['edges'][0] = self.top['edges'][1]
-            self.back['edges'][0] = self.top['edges'][2]
-            self.left['edges'][0] = self.top['edges'][3]
-            self.front['corners'][0] = self.top['corners'][0]
-            self.front['corners'][1] = self.top['corners'][1]
-            self.right['corners'][0] = self.top['corners'][1]
-            self.right['corners'][1] = self.top['corners'][2]
-            self.back['corners'][0] = self.top['corners'][2]
-            self.back['corners'][1] = self.top['corners'][3]
-            self.left['corners'][0] = self.top['corners'][0]
-            self.left['corners'][1] = self.top['corners'][3]
-            self.update_positions()
-
-        elif command == "U'":
-            self.permute(self.top['edges'],[3,0,1,2])
-            self.permute(self.top['corners'],[3,0,1,2])
-            self.front['edges'][0] = self.top['edges'][0]
-            self.right['edges'][0] = self.top['edges'][1]
-            self.back['edges'][0] = self.top['edges'][2]
-            self.left['edges'][0] = self.top['edges'][3]
-            self.front['corners'][0] = self.top['corners'][0]
-            self.front['corners'][1] = self.top['corners'][1]
-            self.right['corners'][0] = self.top['corners'][1]
-            self.right['corners'][1] = self.top['corners'][2]
-            self.back['corners'][0] = self.top['corners'][2]
-            self.back['corners'][1] = self.top['corners'][3]
-            self.left['corners'][0] = self.top['corners'][0]
-            self.left['corners'][1] = self.top['corners'][3]
             self.update_positions()
 
         elif command == "D":
-            self.permute(self.down['edges'],[3,0,1,2])
-            self.permute(self.down['corners'],[3,0,1,2])
-            self.front['edges'][3] = self.down['edges'][0]
-            self.right['edges'][3] = self.down['edges'][1]
-            self.back['edges'][3] = self.down['edges'][2]
-            self.left['edges'][3] = self.down['edges'][3]
-            self.front['corners'][2] = self.down['corners'][0]
-            self.front['corners'][3] = self.down['corners'][1]
-            self.right['corners'][2] = self.down['corners'][1]
-            self.right['corners'][3] = self.down['corners'][2]
-            self.back['corners'][2] = self.down['corners'][2]
-            self.back['corners'][3] = self.down['corners'][3]
-            self.left['corners'][2] = self.down['corners'][0]
-            self.left['corners'][3] = self.down['corners'][3]
-            self.update_positions()
-
-        elif command == "D'":
-            self.permute(self.down['edges'],[1,2,3,0]) # reversed perspective
-            self.permute(self.down['corners'],[1,2,3,0])
-            self.front['edges'][3] = self.down['edges'][0]
-            self.right['edges'][3] = self.down['edges'][1]
-            self.back['edges'][3] = self.down['edges'][2]
-            self.left['edges'][3] = self.down['edges'][3]
-            self.front['corners'][2] = self.down['corners'][0]
-            self.front['corners'][3] = self.down['corners'][1]
-            self.right['corners'][2] = self.down['corners'][1]
-            self.right['corners'][3] = self.down['corners'][2]
-            self.back['corners'][2] = self.down['corners'][2]
-            self.back['corners'][3] = self.down['corners'][3]
-            self.left['corners'][2] = self.down['corners'][0]
-            self.left['corners'][3] = self.down['corners'][3]
+            self.permute(self.bottom['edges'],[3,0,1,2])
+            self.permute(self.bottom['corners'],[3,0,1,2])
             self.update_positions()
 
         elif command == "F":
-            # Update orientations
-            for i in range(4):
-                self.edges[self.front['edges'][i]].orientation = (self.edges[self.front['edges'][i]].orientation + 1) % 2
-            self.corners[self.front['corners'][0]].orientation = (self.corners[self.front['corners'][0]].orientation + 2) % 3
-            self.corners[self.front['corners'][1]].orientation = (self.corners[self.front['corners'][1]].orientation + 1) % 3
-            self.corners[self.front['corners'][2]].orientation = (self.corners[self.front['corners'][2]].orientation + 1) % 3
-            self.corners[self.front['corners'][3]].orientation = (self.corners[self.front['corners'][3]].orientation + 2) % 3
+            # Update orientation of edges
+            self.edges[self.top['edges'][0]].orientation = (self.edges[self.top['edges'][0]].orientation + 1) % 2
+            self.edges[self.middle['edges'][0]].orientation = (self.edges[self.middle['edges'][0]].orientation + 1) % 2
+            self.edges[self.middle['edges'][1]].orientation = (self.edges[self.middle['edges'][1]].orientation + 1) % 2
+            self.edges[self.bottom['edges'][0]].orientation = (self.edges[self.bottom['edges'][0]].orientation + 1) % 2
 
-            self.permute(self.front['edges'],[1,3,0,2])
-            self.permute(self.front['corners'],[2,0,3,1])
+            # Update orientation of corners
+            self.corners[self.top['corners'][0]].orientation = (self.corners[self.top['corners'][0]].orientation + 2) % 3
+            self.corners[self.top['corners'][1]].orientation = (self.corners[self.top['corners'][1]].orientation + 1) % 3
+            self.corners[self.bottom['corners'][0]].orientation = (self.corners[self.bottom['corners'][0]].orientation + 1) % 3
+            self.corners[self.bottom['corners'][1]].orientation = (self.corners[self.bottom['corners'][1]].orientation + 2) % 3
 
-            self.top['edges'][0] = self.front['edges'][0]
-            self.right['edges'][1] = self.front['edges'][2]
-            self.left['edges'][1] = self.front['edges'][1]
-            self.down['edges'][0] = self.front['edges'][3]
+            # Permute edges
+            temp = self.top['edges'][0]
+            self.top['edges'][0] = self.middle['edges'][0]
+            self.middle['edges'][0] = self.bottom['edges'][0]
+            self.bottom['edges'][0] = self.middle['edges'][1]
+            self.middle['edges'][1] = temp
 
-            self.top['corners'][0] = self.front['corners'][0]
-            self.top['corners'][1] = self.front['corners'][1]
-            self.right['corners'][0] = self.front['corners'][1]
-            self.right['corners'][2] = self.front['corners'][3]
-            self.down['corners'][0] = self.front['corners'][2]
-            self.down['corners'][1] = self.front['corners'][3]
-            self.left['corners'][0] = self.front['corners'][0]
-            self.left['corners'][2] = self.front['corners'][2]
-            self.update_positions()
+            # Permute corners
+            temp = self.top['corners'][0]
+            self.top['corners'][0] = self.bottom['corners'][0]
+            self.bottom['corners'][0] = self.bottom['corners'][1]
+            self.bottom['corners'][1] = self.top['corners'][1]
+            self.top['corners'][1] = temp
 
-        elif command == "F'":
-            # Update orientations of corners and edges
-            for i in range(4):
-                self.edges[self.front['edges'][i]].orientation = (self.edges[self.front['edges'][i]].orientation + 1) % 2
-            self.corners[self.front['corners'][0]].orientation = (self.corners[self.front['corners'][0]].orientation + 2) % 3
-            self.corners[self.front['corners'][1]].orientation = (self.corners[self.front['corners'][1]].orientation + 1) % 3
-            self.corners[self.front['corners'][2]].orientation = (self.corners[self.front['corners'][2]].orientation + 1) % 3
-            self.corners[self.front['corners'][3]].orientation = (self.corners[self.front['corners'][3]].orientation + 2) % 3
-
-            self.permute(self.front['edges'],[2,0,3,1])
-            self.permute(self.front['corners'],[1,3,0,2])
-
-            self.top['edges'][0] = self.front['edges'][0]
-            self.right['edges'][1] = self.front['edges'][2]
-            self.left['edges'][1] = self.front['edges'][1]
-            self.down['edges'][0] = self.front['edges'][3]
-
-            self.top['corners'][0] = self.front['corners'][0]
-            self.top['corners'][1] = self.front['corners'][1]
-            self.right['corners'][0] = self.front['corners'][1]
-            self.right['corners'][2] = self.front['corners'][3]
-            self.down['corners'][0] = self.front['corners'][2]
-            self.down['corners'][1] = self.front['corners'][3]
-            self.left['corners'][0] = self.front['corners'][0]
-            self.left['corners'][2] = self.front['corners'][2]
             self.update_positions()
 
         elif command == "R":
-            # Update orientations of corners only
-            self.corners[self.right['corners'][0]].orientation = (self.corners[self.right['corners'][0]].orientation + 2) % 3
-            self.corners[self.right['corners'][1]].orientation = (self.corners[self.right['corners'][1]].orientation + 1) % 3
-            self.corners[self.right['corners'][2]].orientation = (self.corners[self.right['corners'][2]].orientation + 1) % 3
-            self.corners[self.right['corners'][3]].orientation = (self.corners[self.right['corners'][3]].orientation + 2) % 3
+            # Update orientation of corners only
+            self.corners[self.top['corners'][1]].orientation = (self.corners[
+                                                                    self.top['corners'][1]].orientation + 2) % 3
+            self.corners[self.top['corners'][2]].orientation = (self.corners[
+                                                                    self.top['corners'][2]].orientation + 1) % 3
+            self.corners[self.bottom['corners'][1]].orientation = (self.corners[
+                                                                       self.bottom['corners'][1]].orientation + 1) % 3
+            self.corners[self.bottom['corners'][2]].orientation = (self.corners[
+                                                                       self.bottom['corners'][2]].orientation + 2) % 3
 
-            self.permute(self.right['edges'],[1,3,0,2])
-            self.permute(self.right['corners'],[2,0,3,1])
+            # Permute edges
+            temp = self.top['edges'][1]
+            self.top['edges'][1] = self.middle['edges'][1]
+            self.middle['edges'][1] = self.bottom['edges'][1]
+            self.bottom['edges'][1] = self.middle['edges'][2]
+            self.middle['edges'][2] = temp
 
-            self.top['edges'][1] = self.right['edges'][0]
-            self.front['edges'][2] = self.right['edges'][1]
-            self.back['edges'][1] = self.right['edges'][2]
-            self.down['edges'][1] = self.right['edges'][3]
+            # Permute corners
+            temp = self.top['corners'][1]
+            self.top['corners'][1] = self.bottom['corners'][1]
+            self.bottom['corners'][1] = self.bottom['corners'][2]
+            self.bottom['corners'][2] = self.top['corners'][2]
+            self.top['corners'][2] = temp
 
-            self.top['corners'][1] = self.right['corners'][0]
-            self.top['corners'][2] = self.right['corners'][1]
-            self.front['corners'][1] = self.right['corners'][0]
-            self.front['corners'][3] = self.right['corners'][2]
-            self.down['corners'][1] = self.right['corners'][2]
-            self.down['corners'][2] = self.right['corners'][3]
-            self.back['corners'][0] = self.right['corners'][1]
-            self.back['corners'][2] = self.right['corners'][3]
-            self.update_positions()
-
-        elif command == "R'":
-            # Update orientations of corners only
-            self.corners[self.right['corners'][0]].orientation = (self.corners[self.right['corners'][0]].orientation + 2) % 3
-            self.corners[self.right['corners'][1]].orientation = (self.corners[self.right['corners'][1]].orientation + 1) % 3
-            self.corners[self.right['corners'][2]].orientation = (self.corners[self.right['corners'][2]].orientation + 1) % 3
-            self.corners[self.right['corners'][3]].orientation = (self.corners[self.right['corners'][3]].orientation + 2) % 3
-
-            self.permute(self.right['edges'],[2,0,3,1])
-            self.permute(self.right['corners'],[1,3,0,2])
-
-            self.top['edges'][1] = self.right['edges'][0]
-            self.front['edges'][2] = self.right['edges'][1]
-            self.back['edges'][1] = self.right['edges'][2]
-            self.down['edges'][1] = self.right['edges'][3]
-
-            self.top['corners'][1] = self.right['corners'][0]
-            self.top['corners'][2] = self.right['corners'][1]
-            self.front['corners'][1] = self.right['corners'][0]
-            self.front['corners'][3] = self.right['corners'][2]
-            self.down['corners'][1] = self.right['corners'][2]
-            self.down['corners'][2] = self.right['corners'][3]
-            self.back['corners'][0] = self.right['corners'][1]
-            self.back['corners'][2] = self.right['corners'][3]
             self.update_positions()
 
         elif command == "B":
-            # Update orientations
-            for i in range(4):
-                self.edges[self.back['edges'][i]].orientation = (self.edges[self.back['edges'][i]].orientation + 1) % 2
-            self.corners[self.back['corners'][0]].orientation = (self.corners[self.back['corners'][0]].orientation + 2) % 3
-            self.corners[self.back['corners'][1]].orientation = (self.corners[self.back['corners'][1]].orientation + 1) % 3
-            self.corners[self.back['corners'][2]].orientation = (self.corners[self.back['corners'][2]].orientation + 1) % 3
-            self.corners[self.back['corners'][3]].orientation = (self.corners[self.back['corners'][3]].orientation + 2) % 3
+            # Update orientation of edges
+            self.edges[self.top['edges'][2]].orientation = (self.edges[self.top['edges'][2]].orientation + 1) % 2
+            self.edges[self.middle['edges'][2]].orientation = (self.edges[self.middle['edges'][2]].orientation + 1) % 2
+            self.edges[self.middle['edges'][3]].orientation = (self.edges[self.middle['edges'][3]].orientation + 1) % 2
+            self.edges[self.bottom['edges'][2]].orientation = (self.edges[self.bottom['edges'][2]].orientation + 1) % 2
 
-            self.permute(self.back['edges'],[1,3,0,2])
-            self.permute(self.back['corners'],[2,0,3,1])
+            # Update orientation of corners
+            self.corners[self.top['corners'][2]].orientation = (self.corners[
+                                                                    self.top['corners'][2]].orientation + 2) % 3
+            self.corners[self.top['corners'][3]].orientation = (self.corners[
+                                                                    self.top['corners'][3]].orientation + 1) % 3
+            self.corners[self.bottom['corners'][2]].orientation = (self.corners[
+                                                                       self.bottom['corners'][2]].orientation + 1) % 3
+            self.corners[self.bottom['corners'][3]].orientation = (self.corners[
+                                                                       self.bottom['corners'][3]].orientation + 2) % 3
 
-            self.top['edges'][2] = self.back['edges'][0]
-            self.right['edges'][2] = self.back['edges'][1]
-            self.left['edges'][2] = self.back['edges'][2]
-            self.down['edges'][2] = self.back['edges'][3]
+            # Permute edges
+            temp = self.top['edges'][2]
+            self.top['edges'][2] = self.middle['edges'][2]
+            self.middle['edges'][2] = self.bottom['edges'][2]
+            self.bottom['edges'][2] = self.middle['edges'][3]
+            self.middle['edges'][3] = temp
 
-            self.top['corners'][2] = self.back['corners'][0]
-            self.top['corners'][3] = self.back['corners'][1]
-            self.right['corners'][1] = self.back['corners'][0]
-            self.right['corners'][3] = self.back['corners'][2]
-            self.down['corners'][2] = self.back['corners'][2]
-            self.down['corners'][3] = self.back['corners'][3]
-            self.left['corners'][1] = self.back['corners'][1]
-            self.left['corners'][3] = self.back['corners'][3]
-            self.update_positions()
+            # Permute corners
+            temp = self.top['corners'][2]
+            self.top['corners'][2] = self.bottom['corners'][2]
+            self.bottom['corners'][2] = self.bottom['corners'][3]
+            self.bottom['corners'][3] = self.top['corners'][3]
+            self.top['corners'][3] = temp
 
-        elif command == "B'":
-            # Update orientations
-            for i in range(4):
-                self.edges[self.back['edges'][i]].orientation = (self.edges[self.back['edges'][i]].orientation + 1) % 2
-            self.corners[self.back['corners'][0]].orientation = (self.corners[self.back['corners'][0]].orientation + 2) % 3
-            self.corners[self.back['corners'][1]].orientation = (self.corners[self.back['corners'][1]].orientation + 1) % 3
-            self.corners[self.back['corners'][2]].orientation = (self.corners[self.back['corners'][2]].orientation + 1) % 3
-            self.corners[self.back['corners'][3]].orientation = (self.corners[self.back['corners'][3]].orientation + 2) % 3
-
-            self.permute(self.back['edges'],[2,0,3,1])
-            self.permute(self.back['corners'],[1,3,0,2])
-
-            self.top['edges'][2] = self.back['edges'][0]
-            self.right['edges'][2] = self.back['edges'][1]
-            self.left['edges'][2] = self.back['edges'][2]
-            self.down['edges'][2] = self.back['edges'][3]
-
-            self.top['corners'][2] = self.back['corners'][0]
-            self.top['corners'][3] = self.back['corners'][1]
-            self.right['corners'][1] = self.back['corners'][0]
-            self.right['corners'][3] = self.back['corners'][2]
-            self.down['corners'][2] = self.back['corners'][2]
-            self.down['corners'][3] = self.back['corners'][3]
-            self.left['corners'][1] = self.back['corners'][1]
-            self.left['corners'][3] = self.back['corners'][3]
             self.update_positions()
 
         elif command == "L":
-            # Update orientations of corners only
-            self.corners[self.left['corners'][0]].orientation = (self.corners[self.left['corners'][0]].orientation + 1) % 3
-            self.corners[self.left['corners'][1]].orientation = (self.corners[self.left['corners'][1]].orientation + 2) % 3
-            self.corners[self.left['corners'][2]].orientation = (self.corners[self.left['corners'][2]].orientation + 2) % 3
-            self.corners[self.left['corners'][3]].orientation = (self.corners[self.left['corners'][3]].orientation + 1) % 3
+            # Update orientation of corners only
+            self.corners[self.top['corners'][0]].orientation = (self.corners[
+                                                                    self.top['corners'][0]].orientation + 1) % 3
+            self.corners[self.top['corners'][3]].orientation = (self.corners[
+                                                                    self.top['corners'][3]].orientation + 2) % 3
+            self.corners[self.bottom['corners'][0]].orientation = (self.corners[
+                                                                       self.bottom['corners'][0]].orientation + 2) % 3
+            self.corners[self.bottom['corners'][3]].orientation = (self.corners[
+                                                                       self.bottom['corners'][3]].orientation + 1) % 3
 
-            self.permute(self.left['edges'],[2,0,3,1])
-            self.permute(self.left['corners'],[1,3,0,2])
+            # Permute edges
+            temp = self.top['edges'][3]
+            self.top['edges'][3] = self.middle['edges'][3]
+            self.middle['edges'][3] = self.bottom['edges'][3]
+            self.bottom['edges'][3] = self.middle['edges'][0]
+            self.middle['edges'][0] = temp
 
-            self.top['edges'][3] = self.left['edges'][0]
-            self.front['edges'][1] = self.left['edges'][1]
-            self.back['edges'][2] = self.left['edges'][2]
-            self.down['edges'][3] = self.left['edges'][3]
+            # Permute corners
+            temp = self.top['corners'][3]
+            self.top['corners'][3] = self.bottom['corners'][3]
+            self.bottom['corners'][3] = self.bottom['corners'][0]
+            self.bottom['corners'][0] = self.top['corners'][0]
+            self.top['corners'][0] = temp
 
-            self.top['corners'][0] = self.left['corners'][0]
-            self.top['corners'][3] = self.left['corners'][1]
-            self.front['corners'][0] = self.left['corners'][0]
-            self.front['corners'][2] = self.left['corners'][2]
-            self.down['corners'][0] = self.left['corners'][2]
-            self.down['corners'][3] = self.left['corners'][3]
-            self.back['corners'][1] = self.left['corners'][1]
-            self.back['corners'][3] = self.left['corners'][3]
             self.update_positions()
 
-        elif command == "L'":
-            # Update orientations of corners only
-            self.corners[self.left['corners'][0]].orientation = (self.corners[self.left['corners'][0]].orientation + 1) % 3
-            self.corners[self.left['corners'][1]].orientation = (self.corners[self.left['corners'][1]].orientation + 2) % 3
-            self.corners[self.left['corners'][2]].orientation = (self.corners[self.left['corners'][2]].orientation + 2) % 3
-            self.corners[self.left['corners'][3]].orientation = (self.corners[self.left['corners'][3]].orientation + 1) % 3
+        elif command == "M":
+            # Permute centers
+            temp = self.top['center']
+            self.top['center'] = self.middle['centers'][2]
+            self.middle['centers'][2] = self.bottom['center']
+            self.bottom['center'] = self.middle['centers'][0]
+            self.middle['centers'][0] = temp
 
-            self.permute(self.left['edges'],[1,3,0,2])
-            self.permute(self.left['corners'],[2,0,3,1])
+            # Orient edges
+            self.edges[self.top['edges'][0]].orientation = (self.edges[self.top['edges'][0]].orientation + 1) % 2
+            self.edges[self.top['edges'][2]].orientation = (self.edges[self.top['edges'][2]].orientation + 1) % 2
+            self.edges[self.bottom['edges'][0]].orientation = (self.edges[self.bottom['edges'][0]].orientation + 1) % 2
+            self.edges[self.bottom['edges'][2]].orientation = (self.edges[self.bottom['edges'][2]].orientation + 1) % 2
 
-            self.top['edges'][3] = self.left['edges'][0]
-            self.front['edges'][1] = self.left['edges'][1]
-            self.back['edges'][2] = self.left['edges'][2]
-            self.down['edges'][3] = self.left['edges'][3]
-
-            self.top['corners'][0] = self.left['corners'][0]
-            self.top['corners'][3] = self.left['corners'][1]
-            self.front['corners'][0] = self.left['corners'][0]
-            self.front['corners'][2] = self.left['corners'][2]
-            self.down['corners'][0] = self.left['corners'][2]
-            self.down['corners'][3] = self.left['corners'][3]
-            self.back['corners'][1] = self.left['corners'][1]
-            self.back['corners'][3] = self.left['corners'][3]
+            # Permute edges
+            temp = self.top['edges'][0]
+            self.top['edges'][0] = self.top['edges'][2]
+            self.top['edges'][2] = self.bottom['edges'][2]
+            self.bottom['edges'][2] = self.bottom['edges'][0]
+            self.bottom['edges'][0] = temp
             self.update_positions()
 
-    def view(self):
-        print("TOP: (" + self.centers[self.top['center']].color + ")",self.top,'\n',
-              "BOTTOM: (" + self.centers[self.down['center']].color + ")",self.down,'\n',
-              "FRONT: (" + self.centers[self.front['center']].color + ")",self.front,'\n',
-              "BACK: (" + self.centers[self.back['center']].color + ")",self.back,'\n',
-              "LEFT: (" + self.centers[self.left['center']].color + ")",self.left,'\n',
-              "RIGHT: (" + self.centers[self.right['center']].color + ")",self.right)
+        elif command == "E":
+            # Permute centers
+            self.permute(self.middle['centers'],[3,0,1,2])
+            self.permute(self.middle['edges'],[3,0,1,2])
+            # Orient edges
+            self.edges[self.middle['edges'][0]].orientation = (self.edges[self.middle['edges'][0]].orientation + 1) % 2
+            self.edges[self.middle['edges'][1]].orientation = (self.edges[self.middle['edges'][1]].orientation + 1) % 2
+            self.edges[self.middle['edges'][2]].orientation = (self.edges[self.middle['edges'][2]].orientation + 1) % 2
+            self.edges[self.middle['edges'][3]].orientation = (self.edges[self.middle['edges'][3]].orientation + 1) % 2
+            # Permute edges
+            self.update_positions()
+
+        elif command == "S":
+            # Permute centers
+            temp = self.top['center']
+            self.top['center'] = self.middle['centers'][3]
+            self.middle['centers'][3] = self.bottom['center']
+            self.bottom['center'] = self.middle['centers'][1]
+            self.middle['centers'][1] = temp
+
+            # Orient edges
+            self.edges[self.top['edges'][3]].orientation = (self.edges[self.top['edges'][3]].orientation + 1) % 2
+            self.edges[self.top['edges'][1]].orientation = (self.edges[self.top['edges'][1]].orientation + 1) % 2
+            self.edges[self.bottom['edges'][1]].orientation = (self.edges[self.bottom['edges'][1]].orientation + 1) % 2
+            self.edges[self.bottom['edges'][3]].orientation = (self.edges[self.bottom['edges'][3]].orientation + 1) % 2
+
+            # Permute edges
+            temp = self.top['edges'][1]
+            self.top['edges'][1] = self.top['edges'][3]
+            self.top['edges'][3] = self.bottom['edges'][3]
+            self.bottom['edges'][3] = self.bottom['edges'][1]
+            self.bottom['edges'][1] = temp
+            self.update_positions()
 
     def key2color(self,key):
         if key == 'w':
@@ -454,6 +607,7 @@ class Cube():
             raise ValueError("Invalid key")
 
     def render(self):
+        # Render corners
         for i in range(1,9):
             orientation = self.corners[i].orientation
             xy1,xy2,xy3 = self.corner_coords[self.corners[i].position]
@@ -489,6 +643,7 @@ class Cube():
                 self.net[x2,y2,:] = color2
                 self.net[x3,y3,:] = color3
 
+        # Render edges
         for i in range(1,13): # an oriented middle edge is g/b touching w/y/g/b
         # a disoriented medge is o/r touching w/y
         # an oriented tedge w/y touching b/g
@@ -496,7 +651,7 @@ class Cube():
             disoriented = self.edges[i].orientation
             xy1,xy2 = self.edge_coords[self.edges[i].position]
             color1, color2 = self.edges[i].colors
-            if color1 == 'y' or color1 == 'w':
+            if color1 == self.centers[self.top['center']].color or color1 == self.centers[self.bottom['center']].color:
                 if not disoriented:
                     color1 = self.key2color(color1)
                     color2 = self.key2color(color2)
@@ -527,6 +682,11 @@ class Cube():
                     self.net[x1,y1,:] = color2 # ordering switched
                     self.net[x2,y2,:] = color1
 
+        # Render centers
+        for i in range(1,7):
+            x,y = self.center_coords[self.centers[i].position]
+            color = self.key2color(self.centers[i].color)
+            self.net[x,y,:] = color
 
         plt.xticks([])
         plt.yticks([])
@@ -604,4 +764,23 @@ class Center(Cubie):
         self.color = self.center_colors[center_index]
         self.label = center_index
         self.type = 'center'
+        self.position = center_index
         #self.orientation = 0
+
+def help():
+    print("Welcome to cube help.",
+          "To move the cube, simply type a command (or commands delimited with a space ' ') into \ncube.move('command')\n from the following list:\n",
+          "F B R L U D M S E\n",
+          "Doubles are supported (F2)\n",
+          "Primes are supported (F',U'2)\n",
+          "Middle slices supported (M,S,E)\n",
+          "Rotate entire cube (x y z)\n",
+          "To scramble, use cube.scramble()\n",
+          "To solve, use cube.solve()\n",
+          "To undo, use cube.undo()\n",
+          "To redo, use cube.redo()")
+
+if __name__ == "__main__":
+
+    cube = Cube()
+    print("Play with your cube! (For help: Type help())")
