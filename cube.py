@@ -13,7 +13,7 @@ class Cube():
         self.aligned_x = 1
         self.aligned_y = 1
         self.aligned_z = 1
-        
+
         # the edges are a list of the indices of the edges currently in the slots ORDER MATTERS
         self.top = {'edges':[1,2,3,4], 'corners':[1,2,3,4], 'center':1}
         self.middle = {'edges': [5,6,7,8], 'centers': [2,3,4,5]}
@@ -688,9 +688,18 @@ class Cube():
             color = self.key2color(self.centers[i].color)
             self.net[x,y,:] = color
 
-        plt.xticks([])
-        plt.yticks([])
+
+        plt.xticks(ticks=[i - .5 for i in np.arange(12)],labels=[])
+        plt.yticks(ticks=[i - .5 for i in np.arange(9)],labels=[])
         plt.imshow(self.net)
+        plt.grid(which='both',linestyle='-', linewidth='1', color='black')
+        plt.tick_params(
+            axis='both',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            left=False,
+            labelbottom=False) # labels along the bottom edge are off
         plt.show()
 
 
@@ -784,3 +793,20 @@ if __name__ == "__main__":
 
     cube = Cube()
     print("Play with your cube! (For help: Type help())")
+    key = ''
+    while key != 'q':
+        key = input("Type a command: ")
+        if key == "undo":
+            cube.undo()
+        elif key == "redo":
+            cube.redo()
+        elif key == "solve":
+            cube.solve()
+        elif key == "scramble":
+            cube.scramble()
+        elif key.lower() in ["h","help"]:
+            help()
+        elif key == "quit":
+            break
+        else:
+            cube.move(key)
