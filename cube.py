@@ -177,13 +177,14 @@ class Cube():
         return x
 
     def move(self, command, cache=True):
+        command = command.replace("[",'').replace("]",'').replace("xy","x y")
+        command = command.replace("xz","x z").replace("yx","y x").replace("yz","y z")
+        command = command.replace("zx","z x").replace("zy","z y").replace("(",'').replace(")",'')
         if cache:
             if self.undo_counter != -1:
                 self.undo_cache = self.undo_cache[:self.undo_counter+1]
                 self.undo_counter = -1
             self.undo_cache.append(command)
-        command = command.replace("[",'')
-        command = command.replace("]",'')
         command = command.split()
         for letter in command:
             if letter.upper() in ["U2","U2'"]:
@@ -271,7 +272,7 @@ class Cube():
                 self.move_("D")
                 self.move_("D")
                 self.move_("D")
-            elif letter.upper() in ["Y","[Y]"]:
+            elif letter.upper() in ["Y'","[Y']"]:
                 self.move_("E")
                 self.move_("U")
                 self.move_("U")
@@ -591,6 +592,10 @@ class Cube():
             self.bottom['edges'][3] = self.bottom['edges'][1]
             self.bottom['edges'][1] = temp
             self.update_positions()
+        else:
+            # Don't record the last move if it was garbage
+            self.undo_cache = self.undo_cache[:-1]
+
 
     def key2color(self,key):
         if key == 'w':
@@ -792,11 +797,13 @@ def help():
           "solve\n",
           "undo\n",
           "redo\n",
+          "history\n",
           "quit or q")
 
 if __name__ == "__main__":
     import subprocess
     cube = Cube()
+    # plt.plot("")
     print("Play with your cube! (For help: Type help)")
     key = ''
     while key != 'q':
@@ -805,7 +812,7 @@ if __name__ == "__main__":
             cube.undo()
         elif key == "redo":
             cube.redo()
-        elif key == "cache":
+        elif key in ["cache","history"]:
             print("Cache:",cube.undo_cache,"\nPosition:",cube.undo_counter)
         elif key == "solve":
             cube.solve()
@@ -818,7 +825,6 @@ if __name__ == "__main__":
         elif key == "quit":
             print("Type in ipython, and then '%run cube.py' to explore further")
             break
-
         else:
             cube.move(key)
     print("Type in ipython, and then '%run cube.py' to explore further")

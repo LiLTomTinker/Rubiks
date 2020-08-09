@@ -32,3 +32,30 @@ F --> edge all:0 --> all:1
               2:0 --> 6:1
               5:0 --> 1:1
               6:0 --> 5:2
+
+
+
+
+
+
+F ⟳\\   Fw ⟳⟳\
+B \\⟲   Bw \⟲⟲
+R --▲    Rw -▲▲
+L ▼--    Lw ▼▼-
+U ►/=    Uw ►►/- 
+D =/◄
+
+M -▼-
+E  ►E
+S \⟳\
+
+Y ⬱
+X ▲▲▲
+Z ⟳⟳⟳
+
+	Downwards filled arrow	31
+►	Rightwards filled arrow	16
+◄
+↓
+→
+←
