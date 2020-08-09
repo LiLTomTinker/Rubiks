@@ -182,6 +182,8 @@ class Cube():
                 self.undo_cache = self.undo_cache[:self.undo_counter+1]
                 self.undo_counter = -1
             self.undo_cache.append(command)
+        command = command.replace("[",'')
+        command = command.replace("]",'')
         command = command.split()
         for letter in command:
             if letter.upper() in ["U2","U2'"]:
@@ -226,7 +228,7 @@ class Cube():
                 self.move_("D")
                 self.move_("D")
                 self.move_("D")
-            elif letter.upper() == "X":
+            elif letter.upper() in ["X","[X]"]:
                 self.move_("L")
                 self.move_("L")
                 self.move_("L")
@@ -234,13 +236,13 @@ class Cube():
                 self.move_("M")
                 self.move_("M")
                 self.move_("M")
-            elif letter.upper() == "X'":
+            elif letter.upper() in ["X'","[X']"]:
                 self.move_("L")
                 self.move_("R")
                 self.move_("R")
                 self.move_("R")
                 self.move_("M")
-            elif letter.upper() in ["X2","X2'"]:
+            elif letter.upper() in ["X2","X2'","[X2]","[X2']"]:
                 self.move_("L")
                 self.move_("R")
                 self.move_("M")
@@ -261,7 +263,7 @@ class Cube():
                 self.move_("E")
                 self.move_("E")
                 self.move_("E")
-            elif letter.upper() == "Y":
+            elif letter.upper() in ["Y","[Y]"]:
                 self.move_("E")
                 self.move_("E")
                 self.move_("E")
@@ -269,13 +271,13 @@ class Cube():
                 self.move_("D")
                 self.move_("D")
                 self.move_("D")
-            elif letter.upper() == "Y'":
+            elif letter.upper() in ["Y","[Y]"]:
                 self.move_("E")
                 self.move_("U")
                 self.move_("U")
                 self.move_("U")
                 self.move_("D")
-            elif letter.upper() in ["Y2","Y2'"]:
+            elif letter.upper() in ["Y2","[Y2]","Y2'","[Y2']"]:
                 self.move_("E")
                 self.move_("U")
                 self.move_("D")
@@ -289,13 +291,13 @@ class Cube():
             elif letter.upper() in ["S2","S2'"]:
                 self.move_("S")
                 self.move_("S")
-            elif letter.upper() == "Z":
+            elif letter.upper() in ["Z","[Z]"]:
                 self.move_("S")
                 self.move_("F")
                 self.move_("B")
                 self.move_("B")
                 self.move_("B")
-            elif letter.upper() == "Z'":
+            elif letter.upper() in ["Z'","[Z']"]:
                 self.move_("S")
                 self.move_("S")
                 self.move_("S")
@@ -303,7 +305,7 @@ class Cube():
                 self.move_("F")
                 self.move_("F")
                 self.move_("B")
-            elif letter.upper() in ["Z2","Z2'"]:
+            elif letter.upper() in ["Z2","[Z2]","Z2'","[Z2']"]:
                 self.move_("S")
                 self.move_("F")
                 self.move_("B")
@@ -777,36 +779,46 @@ class Center(Cubie):
         #self.orientation = 0
 
 def help():
-    print("Welcome to cube help.",
-          "To move the cube, simply type a command (or commands delimited with a space ' ') into \ncube.move('command')\n from the following list:\n",
+    print("HELP:\n",
+          "Input move(s) with keyboard.\n",
+          "Possible moves:\n",
           "F B R L U D M S E\n",
           "Doubles are supported (F2)\n",
+          "Double slices supported (Fw, Bw)"
           "Primes are supported (F',U'2)\n",
           "Middle slices supported (M,S,E)\n",
           "Rotate entire cube (x y z)\n",
-          "To scramble, use cube.scramble()\n",
-          "To solve, use cube.solve()\n",
-          "To undo, use cube.undo()\n",
-          "To redo, use cube.redo()")
+          "scramble\n",
+          "solve\n",
+          "undo\n",
+          "redo\n",
+          "quit or q")
 
 if __name__ == "__main__":
-
+    import subprocess
     cube = Cube()
-    print("Play with your cube! (For help: Type help())")
+    print("Play with your cube! (For help: Type help)")
     key = ''
     while key != 'q':
-        key = input("Type a command: ")
+        key = input(">> ")
         if key == "undo":
             cube.undo()
         elif key == "redo":
             cube.redo()
+        elif key == "cache":
+            print("Cache:",cube.undo_cache,"\nPosition:",cube.undo_counter)
         elif key == "solve":
             cube.solve()
         elif key == "scramble":
             cube.scramble()
         elif key.lower() in ["h","help"]:
             help()
+        elif key == "debug":
+            rc = subprocess.call("ipython")
         elif key == "quit":
+            print("Type in ipython, and then '%run cube.py' to explore further")
             break
+
         else:
             cube.move(key)
+    print("Type in ipython, and then '%run cube.py' to explore further")
