@@ -1,7 +1,6 @@
 from matplotlib import pyplot as plt
 import numpy as np
-from itertools import combinations
-
+import pickle
 
 class Cube():
     def __init__(self):
@@ -707,6 +706,7 @@ class Cube():
             top=False,         # ticks along the top edge are off
             left=False,
             labelbottom=False) # labels along the bottom edge are off
+        plt.title("Python 2D Cube Simulator by LiLTomTinker",fontsize=7, loc='right')
         plt.show()
 
 
@@ -785,46 +785,65 @@ class Center(Cubie):
 
 def help():
     print("HELP:\n",
-          "Input move(s) with keyboard.\n",
+          "Input move(s) separated with a space with keyboard.\n",
           "Possible moves:\n",
           "F B R L U D M S E\n",
           "Doubles are supported (F2)\n",
-          "Double slices supported (Fw, Bw)"
-          "Primes are supported (F',U'2)\n",
-          "Middle slices supported (M,S,E)\n",
-          "Rotate entire cube (x y z)\n",
+          "Double slices supported (Fw, Bw)\n",
+          "Primes are supported (F',U2')\n",
+          "Middle slices supported (M, S, E)\n",
+          "Rotate entire cube (x, y, z)\n",
+          "Further commands include:\n",
           "scramble\n",
           "solve\n",
           "undo\n",
           "redo\n",
           "history\n",
-          "quit or q")
+          "save - save cube state\n",
+          "load - load cube state\n",
+          "quit or q - leave simulator\n",
+          "In shell, type in 'ipython', and then '%run cube.py' to explore further")
 
 if __name__ == "__main__":
-    import subprocess
+
     cube = Cube()
-    # plt.plot("")
     print("Play with your cube! (For help: Type help)")
     key = ''
     while key != 'q':
         key = input(">> ")
-        if key == "undo":
+        if key.strip() == "undo":
             cube.undo()
-        elif key == "redo":
+        elif key.strip() == "redo":
             cube.redo()
-        elif key in ["cache","history"]:
+        elif key.strip() == "cache":
             print("Cache:",cube.undo_cache,"\nPosition:",cube.undo_counter)
-        elif key == "solve":
+        elif key.strip() == "history":
+            print(cube.undo_cache)
+        elif key.strip() == "solve":
             cube.solve()
-        elif key == "scramble":
+        elif key.strip() == "scramble":
             cube.scramble()
-        elif key.lower() in ["h","help"]:
+        elif key.lower().strip() == "help":
             help()
-        elif key == "debug":
-            rc = subprocess.call("ipython")
-        elif key == "quit":
-            print("Type in ipython, and then '%run cube.py' to explore further")
+        elif key.lower().strip() == "save":
+            filename = input("Save cube state as: ")
+            if filename == 'q':
+                break
+            with open(filename + '.cube', 'wb') as f:
+                pickle.dump(cube, f)
+            print("Saved: "+ '"' + filename + '.cube"')
+        elif key.lower().strip() == "load":
+            filename = input("Load cube state: ")
+            if ".cube" not in filename:
+                filename += '.cube'
+            try:
+                with open(filename,'rb') as f:
+                    cube = pickle.load(f)
+                    cube.render()
+                    print("Loaded: "+'"'+filename+'"')
+            except OSError as e:
+                print(e)
+        elif key.strip() in ["quit","exit"]:
             break
         else:
             cube.move(key)
-    print("Type in ipython, and then '%run cube.py' to explore further")
