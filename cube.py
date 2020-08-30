@@ -1,6 +1,8 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import pickle
+import os
+
 
 class Cube():
     def __init__(self):
@@ -613,6 +615,7 @@ class Cube():
             raise ValueError("Invalid key")
 
     def render(self):
+        # clear_output(wait=True)
         # Render corners
         for i in range(1,9):
             orientation = self.corners[i].orientation
@@ -707,6 +710,7 @@ class Cube():
             left=False,
             labelbottom=False) # labels along the bottom edge are off
         plt.title("Python 2D Cube Simulator by LiLTomTinker",fontsize=7, loc='right')
+        #plt.rcParams['figure.figsize'] = [10, 5]
         plt.show()
 
 
@@ -786,6 +790,11 @@ class Center(Cubie):
 def help():
     print("HELP:\n",
           "Input move(s) separated with a space with keyboard.\n",
+          "The cube faces and notation follow www.cubewhiz.com.\n",
+          "The face layout aligns with:\n",
+          "[ - U - - ]\n",
+          "[ L F R B ]\n",
+          "[ - D - - ]\n",
           "Possible moves:\n",
           "F B R L U D M S E\n",
           "Doubles are supported (F2)\n",
@@ -811,7 +820,9 @@ if __name__ == "__main__":
     key = ''
     while key != 'q':
         key = input(">> ")
-        if key.strip() == "undo":
+        if key == "":
+            print("Enter a command")
+        elif key.strip() == "undo":
             cube.undo()
         elif key.strip() == "redo":
             cube.redo()
@@ -829,13 +840,15 @@ if __name__ == "__main__":
             filename = input("Save cube state as: ")
             if filename == 'q':
                 break
-            with open(filename + '.cube', 'wb') as f:
+            with open(filename + '.pkl', 'wb') as f:
                 pickle.dump(cube, f)
-            print("Saved: "+ '"' + filename + '.cube"')
+            print("Saved: "+ '"' + filename + '.pkl"')
         elif key.lower().strip() == "load":
+            print("Saved cube states:")
+            print([state for state in os.listdir() if ".pkl" in state],"\n")
             filename = input("Load cube state: ")
-            if ".cube" not in filename:
-                filename += '.cube'
+            if ".pkl" not in filename:
+                filename += '.pkl'
             try:
                 with open(filename,'rb') as f:
                     cube = pickle.load(f)
